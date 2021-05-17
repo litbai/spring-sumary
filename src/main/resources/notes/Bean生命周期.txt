@@ -1,0 +1,18 @@
+### init-method
+
+### destroy-method
+
+### BeanPostProcessor
+
+BeanPostProcessor类型的Bean会在普通Bean初始化之前进行初始化，然后在普通Bean初始化的时候，进行拦截，可以做一些特殊逻辑，比如偷梁换柱放入一个代理类。
+
+Bean生命周期：
+
+constructor -- 反射调用构造函数创建对象
+    populateBean -- setter依赖注入各个属性
+        postProcessBeforeInitialization -- Bean初始化方法之前调用
+            init -- Bean 初始化方法
+                postProcessAfterInitialization -- Bean初始化方法之后调用
+                    destroy -- 销毁Bean，Ico容器正常关闭时调用
+
+

@@ -1,0 +1,92 @@
+## AutoWired 依赖注入流程：
+
+    AutoWired会根据类型查找Bean，有如下3种结果
+
+        1. 没有找到，抛异常。
+        Caused by: org.springframework.beans.factory.NoSuchBeanDefinitionException:
+        No qualifying bean of type 'cc.lzy.spring.ioc.annotation.service.ChinaAddressService' available:
+        expected at least 1 bean which qualifies as autowire candidate.
+
+        2. 找到一个，注入成功。
+
+        3. 找到多个，根据名称进行二次匹配（从根据类型找到的多个Bean中进行二次匹配）：
+            1）匹配到一个：注入成功
+            2）没有匹配到指定名称的Bean：抛异常
+            Caused by: org.springframework.beans.factory.NoUniqueBeanDefinitionException:
+            No qualifying bean of type 'cc.lzy.spring.ioc.annotation.service.ChinaAddressService' available:
+            expected single matching bean but found 2: addressService,addressServiceExt
+
+
+            当有多个类型相同的Bean时，可以通过默认的属性名进行匹配，或者自行指定要匹配的名称。
+
+            @Autowired
+            @Qualifier("chinaAddressService")
+            private AddressService addressService;
+
+        最后，如果找不到指定的Bean，不希望系统报错，则可以指定 @Autowired(required = false)
+
+## Resource 注入流程
+
+@Resource 是JSR规范规定的注解，Spring对其也做了良好的支持，Resource 依赖注入流程：
+
+    根据名称进行匹配：
+
+    1. 匹配到一个：注入成功。
+    2. 没有匹配到：再根据类型进行匹配
+        1）匹配到一个，注入成功
+        2）没有匹配到：抛异常
+        Caused by: org.springframework.beans.factory.NoSuchBeanDefinitionException:
+        No qualifying bean of type 'cc.lzy.spring.ioc.annotation.dao.AddressDAO' available:
+        expected at least 1 bean which qualifies as autowire candidate.
+
+        3）匹配到多个：抛异常
+        Caused by: org.springframework.beans.factory.NoUniqueBeanDefinitionException:
+        No qualifying bean of type 'cc.lzy.spring.ioc.annotation.service.AddressService' available:
+        expected single matching bean but found 2: americanAddressService,chinaAddressService
+
+
+## 泛型依赖注入
+
+Autowired注入时，也会考虑泛型信息，即使声明属性时使用的是父类，注入时仍然可以根据泛型信息，注入正确的具体类。
+
+注入时，需要传递泛型信息:
+@Autowired
+private BaseDAO<T> baseDAO;
+
+
+public interface BaseDAO<T> {
+    void save(T t);
+}
+
+@Repository
+public class UserDAO implements BaseDAO<User> {
+    @Override
+    public void save(User user) {
+        System.out.println("UserDAO#save");
+    }
+}
+
+@Repository
+public class ItemDAO implements BaseDAO<Item> {
+    @Override
+    public void save(Item item) {
+        System.out.println("ItemDAO#save");
+    }
+}
+
+public class BaseService<T> {
+    @Autowired
+    private BaseDAO<T> baseDAO; // T 绝对不能丢，否则无法注入
+
+    public void save(T t) {
+        baseDAO.save(t);
+    }
+}
+
+@Service
+public class UserService extends BaseService<User> {
+}
+
+@Service
+public class ItemService extends BaseService<Item>{
+}

@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<beans xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns="http://www.springframework.org/schema/beans" xmlns:aop="http://www.springframework.org/schema/aop"
+       xmlns:context="http://www.springframework.org/schema/context" xmlns:tx="http://www.springframework.org/schema/tx"
+       xmlns:cache="http://www.springframework.org/schema/cache" xmlns:p="http://www.springframework.org/schema/p"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+     http://www.springframework.org/schema/beans/spring-beans-4.0.xsd
+     http://www.springframework.org/schema/aop
+     http://www.springframework.org/schema/aop/spring-aop-4.0.xsd
+     http://www.springframework.org/schema/context
+     http://www.springframework.org/schema/context/spring-context-4.0.xsd
+     http://www.springframework.org/schema/tx
+     http://www.springframework.org/schema/tx/spring-tx-4.0.xsd
+     http://www.springframework.org/schema/cache http://www.springframework.org/schema/cache/spring-cache-4.0.xsd" default-autowire="byName">
+
+    <bean id="calculator" class="cc.lzy.spring.aop.service.CalculatorImpl"/>
+
+    <bean id ="monitorLogAspect" class="cc.lzy.spring.aop.xml.MonitorLogAspect"/>
+
+    <bean id = "beanNameAutoProxyCreator" class="org.springframework.aop.framework.autoproxy.BeanNameAutoProxyCreator">
+        <property name="beanNames">
+            <list>
+                <value>calculator</value>
+            </list>
+        </property>
+        <property name="interceptorNames">
+            <list>
+                <value>monitorLogAspect</value>
+            </list>
+        </property>
+    </bean>
+
+    <!-- 将Bean注册到容器 -->
+    <bean id="mobileService" class="cc.lzy.spring.aop.service.MobileServiceImpl"/>
+    <bean id="mobileServiceAspect" class="cc.lzy.spring.aop.xml.MobileServiceLogAspect"/>
+    <!-- 切面配置，如果有多个切面同时切同一个对象，在不指定order的情况下默认已配置的先后顺序为准-->
+    <aop:config>
+        <aop:pointcut id="mobileServicePointCut" expression="execution(public * cc.lzy.spring.aop.service.MobileService.*(..))"/>
+        <!-- 等价于@Aspect -->
+        <aop:aspect ref="mobileServiceAspect" order="1">
+            <!-- 前置和环绕，谁先执行，跟配置顺序有关，而采用注解方式的时候环绕优先-->
+            <aop:around method="around" pointcut-ref="mobileServicePointCut"/>
+            <!-- after即使配置在前，也是在before之后才执行-->
+            <aop:after method="after" pointcut-ref="mobileServicePointCut"/>
+            <aop:before method="before" pointcut="execution(public * cc.lzy.spring.aop.service.MobileService.*(..)) &amp;&amp; this(proxy) &amp;&amp; target(target)" />
+            <aop:after-returning method="afterReturning" pointcut-ref="mobileServicePointCut" returning="ret"/>
+            <aop:after-throwing method="afterThrowing" pointcut-ref="mobileServicePointCut" throwing="th"/>
+        </aop:aspect>
+    </aop:config>
+
+
+</beans>

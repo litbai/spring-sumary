@@ -1,0 +1,14 @@
+Spring Expression Language
+
+基础格式：#{}
+
+1. 算数运算：#{123 * 10}
+
+2. 引用bean：#{bookService}
+
+2. bean属性：#{bookService.isdn}
+
+3. bean方法：#{bookService.brow()}
+
+4. 静态方法：#{T(全限定类名).method(参数)}
+示例：#{T(java.util.UUID).randomUUID().toString().substring(0,10)}

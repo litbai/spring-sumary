@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<beans xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns="http://www.springframework.org/schema/beans" xmlns:aop="http://www.springframework.org/schema/aop"
+       xmlns:context="http://www.springframework.org/schema/context" xmlns:tx="http://www.springframework.org/schema/tx"
+       xmlns:cache="http://www.springframework.org/schema/cache" xmlns:p="http://www.springframework.org/schema/p"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+     http://www.springframework.org/schema/beans/spring-beans-4.0.xsd
+     http://www.springframework.org/schema/aop
+     http://www.springframework.org/schema/aop/spring-aop-4.0.xsd
+     http://www.springframework.org/schema/context
+     http://www.springframework.org/schema/context/spring-context-4.0.xsd
+     http://www.springframework.org/schema/tx
+     http://www.springframework.org/schema/tx/spring-tx-4.0.xsd
+     http://www.springframework.org/schema/cache http://www.springframework.org/schema/cache/spring-cache-4.0.xsd" default-autowire="byName">
+
+    <!-- 自动装配 -->
+    <!-- default-autowire="byName" -->
+
+    <!-- setting 注入 -->
+    <bean id="bookService" class="cc.lzy.spring.ioc.xml.service.BookService">
+        <property name="isbn" value="XL001"/>
+        <property name="name" value="霍乱时期的爱情"/>
+        <property name="price" value="8890"/>
+    </bean>
+
+    <!-- 构造函数 注入 -->
+    <bean id="bookService2" class="cc.lzy.spring.ioc.xml.service.BookService">
+        <constructor-arg name="isbn" value="XL002"/>
+        <constructor-arg name="name" value="百年孤独"/>
+        <constructor-arg name="price" value="10999"/>
+    </bean>
+
+    <!-- 读取外部属性文件 -->
+    <context:property-placeholder location="classpath:book.properties"/>
+
+    <!-- 外部配置文件-->
+    <bean id="bookServiceProperties" class="cc.lzy.spring.ioc.xml.service.BookService">
+        <property name="isbn" value="${book.isbn}"/>
+        <property name="name" value="${book.name} 动态拼接"/>
+        <property name="price" value="${book.price}"/>
+    </bean>
+
+    <!-- abstract="true" 此Bean配置只能被其他Bean继承，无法通过getBean获得此bean -->
+    <bean id="abstractookService" class="cc.lzy.spring.ioc.xml.service.BookService" abstract="true">
+        <property name="isbn" value="XLBASE"/>
+        <property name="name" value=""/>
+        <property name="price" value="99"/>
+    </bean>
+
+    <!-- 通过parent继承配置，用于两个bean大量属性配置相同的场景 -->
+    <bean id="bookService3" parent="bookService">
+        <property name="isbn" value="XL001-1"/>
+        <property name="name" value="霍乱时期的爱情续"/>
+    </bean>
+
+    <!-- 无属性 -->
+    <bean id = "audiServiceImpl" class="cc.lzy.spring.ioc.xml.service.car.AudiServiceImpl"/>
+    <bean id = "bmwServiceImpl" class="cc.lzy.spring.ioc.xml.service.car.BmwServiceImpl"/>
+    <bean id = "iphoneServiceImpl" class="cc.lzy.spring.ioc.xml.service.mobile.IPhoneServiceImpl"/>
+    <bean id = "xiaomiServiceImpl" class="cc.lzy.spring.ioc.xml.service.mobile.XiaomiServiceImpl"/>
+
+    <bean id = "compositeService" class="cc.lzy.spring.ioc.xml.service.CompositeService">
+<!--        <property name="serviceName">-->
+<!--            <null/>-->
+<!--        </property>-->
+        <!-- ref: 引用外部Bean -->
+<!--        <property name="bookService" ref="bookService"/>-->
+
+        <!-- 引用内部Bean，相当于new BookService() , 一般不使用这种, 且无法通过getBean获取内部Bean -->
+<!--        <property name="bookService">-->
+<!--            <bean id = "bookServiceInner" class="cc.lzy.spring.ioc.xml.service.BookService">-->
+<!--                <constructor-arg name="isbn" value="XL00_TEMP"/>-->
+<!--                <constructor-arg name="name" value="临时NEW"/>-->
+<!--                <constructor-arg name="price" value="999"/>-->
+<!--            </bean>-->
+<!--        </property>-->
+
+<!--        <property name="pencils">-->
+<!--            <map key-type="java.lang.String" value-type="java.lang.String">-->
+<!--                <entry key="deli" value="deli_pen"/>-->
+<!--                <entry key="chenguang" value="chenguang_pen"/>-->
+<!--            </map>-->
+<!--        </property>-->
+
+        <!-- list  -->
+<!--        <property name="carServices">-->
+<!--        &lt;!&ndash;  new ArrayList  &ndash;&gt;-->
+<!--            <list>-->
+<!--                <ref bean="audiServiceImpl"/>-->
+<!--                <ref bean="bmwServiceImpl"/>-->
+<!--            </list>-->
+<!--        </property>-->
+
+        <!-- map  -->
+<!--        <property name="mobileServiceMap">-->
+<!--            &lt;!&ndash;  new LinkedHashMap  &ndash;&gt;-->
+<!--            <map>-->
+<!--                <entry key="iphone" value-ref="iphoneServiceImpl"/>-->
+<!--                <entry key="xiaomi" value-ref="xiaomiServiceImpl"/>-->
+<!--            </map>-->
+<!--        </property>-->
+
+        <!-- properties -->
+<!--        <property name="properties">-->
+<!--            <props>-->
+<!--                <prop key="os.name">Mac OS</prop>-->
+<!--                <prop key="PATH">usr/local/bin;usr/share/mysql/bin</prop>-->
+<!--            </props>-->
+<!--        </property>-->
+    </bean>
+
+    <!-- 静态工厂，通过BeanFactory.get("xx") 获取的是通过staticGetXx创建的Bean，而非xxxFactory -->
+<!--    <bean id="xx" class="xxxFactory" factory-method="staticGetXx"/>-->
+
+    <!-- 实例工厂，先创建工厂Bean，再利用工厂Bean创建其他Bean  -->
+<!--    <bean id="xxiInstanceFactory" class="xxxInstanceFactory"/>-->
+<!--    <bean id="xxFactory" class="xxxFactory" factory-bean="xxxInstanceFactory" factory-method="getXx"/>-->
+
+    <!-- Spring提供的工厂支持：FactoryBean  -->
+    <!-- 只有使用到底层Bean的时候，才会触发工厂方法getObject的调用，具备懒加载特性 -->
+    <bean id = "alibabaService" class="cc.lzy.spring.ioc.xml.service.AlibabaServiceFactoryBean"/>
+
+    <!-- 指定生命周期方法，init在构造方法之后调用，destroy在容器关闭后调用, prototype类型的Bean，容器关闭时不会destroy-->
+    <bean id = "lifeCircleService" class="cc.lzy.spring.ioc.xml.service.LifeCircleService"
+          init-method="init" destroy-method="destroy"/>
+
+    <!-- BeanPostProcessor 注册-->
+    <bean id = "myBeanPostProcessor" class="cc.lzy.spring.ioc.xml.service.MyBeanPostProcessor"/>
+    <bean id = "myBeanPostProcessor2" class="cc.lzy.spring.ioc.xml.service.MyBeanPostProcessor2"/>
+
+    <!-- autowire:
+
+        default: 默认不自动装配
+        byName: 根据name装配，需要提供setter，找不到不装配。**常用**
+        byType: 根据类型装配，需要提供setter，找不到不装配，找到多余的抛异常
+        constructor: 构造函数装配，
+            * 先按类型进行装配，如果没有，调用无参构造器；
+            * 如果找到多个，再按名字继续匹配，找不到，装配null
+        no: 不自动装配
+     -->
+    <bean id="personService" class="cc.lzy.spring.ioc.xml.service.PersonService" autowire="byName">
+        <property name="memberId" value="007"/>
+    </bean>
+
+    <!-- spEL -->
+    <bean id = "bookService001" class="cc.lzy.spring.ioc.xml.service.BookService">
+        <property name="isbn" value="#{bookService.brow('001')}"/>
+        <property name="name" value="#{bookService.name}"/>
+    </bean>
+
+
+</beans>
