@@ -8,8 +8,11 @@ import cc.lzy.spring.ioc.annotation.controller.AddressController;
 import cc.lzy.spring.ioc.annotation.domain.Item;
 import cc.lzy.spring.ioc.annotation.domain.User;
 import cc.lzy.spring.ioc.annotation.service.BaseService;
+import cc.lzy.spring.ioc.annotation.service.IStudent;
 import cc.lzy.spring.ioc.annotation.service.ItemService;
 import cc.lzy.spring.ioc.annotation.service.UserService;
+import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
+import org.springframework.beans.factory.support.DefaultListableBeanFactory;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.support.ClassPathXmlApplicationContext;
 
@@ -19,13 +22,13 @@ import org.springframework.context.support.ClassPathXmlApplicationContext;
  */
 public class AnnotationDrivenDemo {
     public static void main(String[] args) {
-        generic();
+        iter();
     }
 
     /**
-     * Autowired注入时，会考虑到泛型，可以根据泛型信息正确的注入对应的具体Bean，及时声明时使用的父类有多个实现子类
+     * Autowired注入时，会考虑到泛型，可以根据泛型信息正确的注入对应的具体Bean，即使声明时使用的父类有多个实现子类
      */
-    public static void generic() {
+    public static void geneABsric() {
         ApplicationContext context = new ClassPathXmlApplicationContext("beans-annotation-driven.xml");
         UserService userService = context.getBean("userService", UserService.class);
         userService.save(new User());
@@ -38,5 +41,10 @@ public class AnnotationDrivenDemo {
         ApplicationContext context = new ClassPathXmlApplicationContext("beans-annotation-driven.xml");
         AddressController addressController = context.getBean("addressController", AddressController.class);
         addressController.saveAddr();
+    }
+
+    public static void iter() {
+        ClassPathXmlApplicationContext context = new ClassPathXmlApplicationContext("beans-annotation-driven.xml");
+        DefaultListableBeanFactory beanRegistry = (DefaultListableBeanFactory)context.getBeanFactory();
     }
 }

@@ -5,7 +5,6 @@
 package cc.lzy.spring.ioc.annotation.service;
 
 import cc.lzy.spring.ioc.annotation.dao.AddressDAO;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
@@ -24,7 +23,6 @@ public class ChinaAddressService implements AddressService {
 
     @Override
     public void saveAddr() {
-        System.out.println("ChinaAddressService");
         addressDao.save();
     }
 }
