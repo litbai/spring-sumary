@@ -25,6 +25,7 @@ public class AnnotationAopDemo {
     }
 
     private static void shopAspect() {
+        System.setProperty(DebuggingClassWriter.DEBUG_LOCATION_PROPERTY, ".//");
         ApplicationContext context = new ClassPathXmlApplicationContext("beans-aop-annotation-driven.xml");
         ShopService shopService = context.getBean("shopServiceImpl", ShopService.class);
         System.out.println(shopService.getShopNameById("001"));
