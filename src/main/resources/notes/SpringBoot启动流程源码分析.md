@@ -83,7 +83,7 @@ public static List<String> loadFactoryNames(Class<?> factoryClass, ClassLoader c
 
 构造函数执行完后的SpringApplication，设置了initializers和listeners，这些属性非常重要，会完成一些重要工作。比如 ConfigFileApplicationListener，在接收到 ApplicationEnvironmentPreparedEvent 时，会处理 spring.profiles.active多环境配置。
 
-<img src="/Users/taigai/Library/Application Support/typora-user-images/image-20220211143434112.png" alt="image-20220211143434112" style="zoom:50%;" />
+<img src="images/image-20220211143434112.png" alt="image-20220211143434112" style="zoom:50%;" />
 
 
 
@@ -185,7 +185,7 @@ load(context, sources.toArray(new Object[sources.size()]));
 listeners.contextLoaded(context);
 ```
 
-![image-20220215130758656](/Users/taigai/Library/Application Support/typora-user-images/image-20220215130758656.png)
+![image-20220215130758656](images/image-20220215130758656.png)
 
 #### refreshContext
 
@@ -205,7 +205,7 @@ listeners.contextLoaded(context);
 
 * invokeBeanFactoryPostProcessors：调用BeanFactoryPostProcessor的钩子方法，Bean扫描就是在这一步完成的，具体完成Bean扫描的为这个BeanFactoryPostProcessor：ConfigurationClassPostProcessor#postProcessBeanDefinitionRegistry
 
-  <img src="/Users/taigai/Library/Application Support/typora-user-images/image-20220212204936372.png" alt="image-20220212204936372" style="zoom:30%;" />
+  <img src="images/image-20220212204936372.png" alt="image-20220212204936372" style="zoom:30%;" />
 
 * registerBeanPostProcessors
 
@@ -267,7 +267,7 @@ List<EnvironmentPostProcessor> loadPostProcessors() {
 
 #####PropertySourceLoader
 
-<img src="/Users/taigai/Library/Application Support/typora-user-images/image-20220211160447009.png" alt="image-20220211160447009" style="zoom:40%;" />
+<img src="images/image-20220211160447009.png" alt="image-20220211160447009" style="zoom:40%;" />
 
 
 
@@ -293,11 +293,11 @@ private SpringProfiles bindSpringProfiles(PropertySources propertySources) {
 }
 ```
 
-<img src="/Users/taigai/Library/Application Support/typora-user-images/image-20220211164838553.png" alt="image-20220211164838553" style="zoom:30%;" />
+<img src="images/image-20220211164838553.png" alt="image-20220211164838553" style="zoom:30%;" />
 
 
 
-<img src="/Users/taigai/Library/Application Support/typora-user-images/image-20220211165207789.png" alt="image-20220211165207789" style="zoom:30%;" />
+<img src="images/image-20220211165207789.png" alt="image-20220211165207789" style="zoom:30%;" />
 
 
 
