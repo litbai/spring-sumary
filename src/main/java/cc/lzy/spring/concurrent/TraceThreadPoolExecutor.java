@@ -1,4 +1,4 @@
-package cc.lzy.spring.consurrent;
+package cc.lzy.spring.concurrent;
 
 import java.text.SimpleDateFormat;
 import java.util.Map;

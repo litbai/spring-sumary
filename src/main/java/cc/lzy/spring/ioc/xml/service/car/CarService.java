@@ -11,5 +11,5 @@ package cc.lzy.spring.ioc.xml.service.car;
  * @version CarService.java, v 0.1 2021年03月27日 17:42 taigai Exp $
  */
 public interface CarService {
-    public String logo();
+    String logo();
 }
