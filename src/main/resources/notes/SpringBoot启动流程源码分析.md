@@ -203,11 +203,15 @@ listeners.contextLoaded(context);
 
 * postProcessBeanFactory：注册了一个BeanPostProcessor：WebApplicationContextServletContextAwareProcessor
 
-* invokeBeanFactoryPostProcessors：调用BeanFactoryPostProcessor的钩子方法，Bean扫描就是在这一步完成的，具体完成Bean扫描的为这个BeanFactoryPostProcessor：ConfigurationClassPostProcessor#postProcessBeanDefinitionRegistry
+* invokeBeanFactoryPostProcessors：Spring提供的重要扩展点之一，可以在BeanFactory创建完，Bean实例化之前做一些工作。实例化所有类型为BeanFactoryPostProcess的先Bean，再依次调用bean的钩子方法，Bean扫描就是在这一步完成的，具体完成Bean扫描的为这个BeanFactoryPostProcessor：ConfigurationClassPostProcessor#postProcessBeanDefinitionRegistry
 
   <img src="images/image-20220212204936372.png" alt="image-20220212204936372" style="zoom:30%;" />
 
 * registerBeanPostProcessors
+
+  获取容器中Type为BeanPostProcess的beanName列表，调用Beanfactory#getBean方法提前初始化这些Bean，并将这些Bean存入BeanFactory的beanPostProcessors属性中。
+
+  ![image-20220220100621027.png](images/image-20220220100621027.png)
 
 * registerListeners
 
@@ -225,12 +229,40 @@ listeners.contextLoaded(context);
 
     
 
-####AutoConfiguration工作原理
+####自动配置的工作原理
+
+重点在于 @EnableAutoConfiguration，其又包含一个元注解：@Import(EnableAutoConfigurationImportSelector.class)。真正干活的就是这个 EnableAutoConfigurationImportSelector，它会从 spring.factories中读取所有的  EnableAutoConfiguration 的实现类，Spring会将这些实现类，以单例模式注册到自己的容器中。
+
+所有的 @Enablexxx模式，基本都是这个套路，包含一个元注解 @Import(xxxxxx)，真正干活的其实是这个xxxxx。
 
 ```
-# spring.factories 文件加载
-List<String> classNames = SpringFactoriesLoader.loadFactoryNames(type, classLoader)
+// EnableAutoConfigurationImportSelector#selectImports，返回一个类名数据，Spring容器会创建这些类的单例，注册到容器中
+@Override
+public String[] selectImports(AnnotationMetadata annotationMetadata) {
+    if (!isEnabled(annotationMetadata)) {
+        return NO_IMPORTS;
+    }
+    try {
+        AutoConfigurationMetadata autoConfigurationMetadata = AutoConfigurationMetadataLoader
+                .loadMetadata(this.beanClassLoader);
+        AnnotationAttributes attributes = getAttributes(annotationMetadata);
+        List<String> configurations = getCandidateConfigurations(annotationMetadata, attributes);
+        configurations = removeDuplicates(configurations);
+        configurations = sort(configurations, autoConfigurationMetadata);
+        Set<String> exclusions = getExclusions(annotationMetadata, attributes);
+        checkExcludedClasses(configurations, exclusions);
+        configurations.removeAll(exclusions);
+        configurations = filter(configurations, autoConfigurationMetadata);
+        fireAutoConfigurationImportEvents(configurations, exclusions);
+        return configurations.toArray(new String[configurations.size()]);
+    }
+    catch (IOException ex) {
+        throw new IllegalStateException(ex);
+    }
+}
 ```
+
+![image-20220219122751353](/Users/taigai/Library/Application Support/typora-user-images/image-20220219122751353.png)
 
 
 
@@ -242,11 +274,12 @@ ConfigFileApplicationListener是一个ApplicationListener，完成了一些值�
 * 从spring.factories中加载 PropertySourceLoader，用于加载 applicaiton.properties 文件
 * 处理 spring.profiles.active 
 
-
-
 ##### 加载并执行 EnvironmentPostProcessor
 
 ```
+// 可以实现自己的EnvironmentPostProcessor，添加一些自定义配置逻辑
+// DiamondEnvironmentPostProcessor 即是一个自定义的EnvironmentPostProcessor，实现了优先从diamond取配置的逻辑,
+// 然后再从application.properties文件中读取配置，从而实现分机房配置。
 private void onApplicationEnvironmentPreparedEvent(ApplicationEnvironmentPreparedEvent event) {
 		List<EnvironmentPostProcessor> postProcessors = loadPostProcessors();
 		postProcessors.add(this);
@@ -262,8 +295,6 @@ List<EnvironmentPostProcessor> loadPostProcessors() {
 }
 
 ```
-
-
 
 #####PropertySourceLoader
 
@@ -301,7 +332,104 @@ private SpringProfiles bindSpringProfiles(PropertySources propertySources) {
 
 
 
+##### Bean扫描原理
+
+普通的Bean扫描比较简单，简化后的版本就是通过ClassLoader#getResouces加载文件（从basePackage下），然后将文件流通过ASM解析得到类的所有元信息，然后判断此类是否有@Component注解。
+
+上述可以完成类文件的加载和Bean注册，如果都是普通的Service、Controller的话，那就完事了。但是现在SpringBoot都是基于配置类的方式替代了XML，有些类文件承载了配置文件的作用（至少有一个主启动类Application），解析的起始点就是配置类Applicaiton，解析是一个递归的过程（具体实现为：org.springframework.context.annotation.ConfigurationClassParser#processConfigurationClass），第一阶段解析过程如下：
+
+* 解析@Conditional，看是否应该注册此Bean（比如@ConditionalOnProperty就是在这一步执行）。
+* 解析内部类，看内部类是否应该注册为Spring Bean，如果是，递归解析内部类。
+* 解析 @PropertySource。
+* 解析 @ComponentScan：
+  * 扫描指定package下的所有类，标注了@Component的作为候选者（扫描到的AutoConfiguration会被排除），创建对应的BeanDefinition。
+  * 解析候选者标注的@lazy、@Primary、@DependsOn，设置到BeanDefinition的对应属性中。
+  * 对每一个BeanDefinition，如果容器中不存在，注册到容器中。
+
+* 对上述每一个真正注册到容器中的BeanDefinition，重复上述过程，直到找不到标注了@ComponentScan的候选者。
 
 
 
+经过第一阶段，扫描出所有标注了@Component的Bean，因为有些Bean是起配置作用的Bean，所以对每一个Bean还要做进一步解析（第二阶段）：
 
+* 解析 @Import：具体方法为ConfigurationClassParser#processImports
+
+  * 如果是ImportSelector
+    * 如果是DeferredImportSelector，则放入deferredImportSelectors属性中，后面有专门流程处理deferredImportSelectors，AutoConfiguration机制就是通过@Import(EnableAutoConfigurationImportSelector.class)实现的，它就是一个DeferredImportSelector，原因就是需要判断@ConditionalOnMissingBean这种条件，所以要延迟处理AutoConfiguration，等其他普通BeanDefinition都注册后再处理。
+    * 如果是其他Selector，调用selectImports方法，得到导入的类数组，递归processImports。
+  * 如果是ImportBeanDefinitionRegistrar，放入ConfigurationClass的属性importBeanDefinitionRegistrars中，后面有专门的流程处理ImportBeanDefinitionRegistrar。
+  * 其他普通类，递归processConfigurationClass。
+
+* 解析 @ImportResource：放入ConfigurationClass的属性importedResources中，后面有专门的流程处理这些resources
+
+* 解析@Bean方法：放人ConfigurationClass的属性beanMethods中，后面有专门的流程处理beanMethods。
+
+  
+
+经过第二阶段，一个普通类就解析完毕，也将对应的BeanDefinition注册到了容器中，还有最后一个递归解析步骤（第三阶段）：
+
+* 找到当前Bean属性类的父类，逐个递归重复上述第一和第二阶段，直至Object类为止，并记录已解析的所有父类，防止重复解析。
+
+
+
+经过三个阶段，一个类解析完毕，最后生成了一个ConfigClass实例（org.springframework.context.annotation.ConfigurationClass），存入ConfigurationClassParse的configurationClasses属性中。
+
+
+
+<img src="images/image-20220219122345481.png" alt="image-20220219122345481" style="zoom:30%;" />
+
+
+
+<img src="images/image-20220219122153511.png" alt="image-20220219122153511" style="zoom:40%;" />
+
+
+
+接着讲前面铺垫的，未完成的几个步骤：
+
+* processDeferredImportSelectors：已知的deferredImportSelectors只有一个，就是EnableAutoConfigurationImportSelector，用来处于AutoConfiguration，此时普通的BeanDefinition已经注册完毕，这个方法会加载所有的AutoConfiguration（spring.factories中指定的所有EnableAutoConfiguration），对每一个候选者执行上述三大阶段。
+
+
+
+到目前为止，所有的@ComponentScan指定的basePackage下的Bean都已经被扫描并注册到了容器中，但是AutoConfiguration以及Configuration中@Bean标注的方法指定的Bean均未注册（只有上述第一阶段，处理@ComponentScan这一步骤才会真正的注册BeanDefinition，其余均不会注册，只会生成一个ConfigClass），其只生成了对应的ConfigurationClass类。
+
+前面解析的时候，给ConfigurationClass类的一些属性赋了值，但一直未处理，现在是时候处理了。处理的具体方法：org.springframework.context.annotation.ConfigurationClassBeanDefinitionReader#loadBeanDefinitionsForConfigurationClass
+
+，主要分为如下几步：
+
+* 如果是被Import进来的，调用：registerBeanDefinitionForImportedConfigurationClass
+* 对每一个beanMethod，调用：loadBeanDefinitionsForBeanMethod
+* 处理importedResources：loadBeanDefinitionsFromImportedResources
+* 处理importBeanDefinitionRegistrars：loadBeanDefinitionsFromRegistrars
+
+##### @Configuration 类增强
+
+凡是标注了@Applicaiton的类，最终在容器中创建的单实例Bean均会被代理，其类型为通过CGLIB增强后的代理类。实现原理就在ConfigurationClassPostProcess#postProcessBeanFactory方法，会调用enhanceConfigurationClasses方法，对BeanDefinition的beanClass属性进行“偷天换日”。
+
+```
+// org.springframework.context.annotation.ConfigurationClassPostProcessor#enhanceConfigurationClasses
+// configBeanDefs为识别的
+ConfigurationClassEnhancer enhancer = new ConfigurationClassEnhancer();
+for (Map.Entry<String, AbstractBeanDefinition> entry : configBeanDefs.entrySet()) {
+	AbstractBeanDefinition beanDef = entry.getValue();
+	// If a @Configuration class gets proxied, always proxy the target class
+	beanDef.setAttribute(AutoProxyUtils.PRESERVE_TARGET_CLASS_ATTRIBUTE, Boolean.TRUE);
+	try {
+		// Set enhanced subclass of the user-specified bean class
+		Class<?> configClass = beanDef.resolveBeanClass(this.beanClassLoader);
+		Class<?> enhancedClass = enhancer.enhance(configClass, this.beanClassLoader);
+		if (configClass != enhancedClass) {
+			if (logger.isDebugEnabled()) {
+				logger.debug(String.format("Replacing bean definition '%s' existing class '%s' with " +
+						"enhanced class '%s'", entry.getKey(), configClass.getName(), enhancedClass.getName()));
+			}
+			// 偷天换日。很多框架整合Spring，都是使用动态代理，通过改变beanClass属性进行偷天换日，将beanClass改为代理类名。
+			beanDef.setBeanClass(enhancedClass);
+		}
+	}
+	catch (Throwable ex) {
+		throw new IllegalStateException("Cannot load configuration class: " + beanDef.getBeanClassName(), ex);
+	}
+}
+```
+
+<img src="images/image-20220219181502869.png" alt="20220219181502869" style="zoom:30%;" />
